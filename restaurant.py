@@ -2,6 +2,7 @@ import sqlite3
 import pandas as pd
 import csv
 
+
 def import_data(csv_file, db):
 
     conn = sqlite3.connect(db)
@@ -11,20 +12,26 @@ def import_data(csv_file, db):
     conn.commit()
 
     cq = '''CREATE TABLE restaurants (
-	    id INTEGER, name TEXT, cuisine TEXT, allergies TEXT, 
-        dietary restriction TEXT, nutritional value TEXT
+	    name TEXT, type TEXT
         )'''  #creates the table restaurants
     cursor.execute(cq)
 
     #reads the csv file using pandas
-    df= pd.read_csv(csv_file, header=None, delim_whitespace=False,
-        names= ["id","name","cuisine","allergies", "dietary_restrictions", "nutritional_value"])
-    data=[]
+    df= pd.read_csv(csv_file,  delim_whitespace=False, usecols=[0, 3],
+        names= ["name","type"])
     
-    for _, row in df.iterrows(): #iterates over the rows and appends them
-        data.append((row["id"],row["name"], row["cuisine"], row["allergies"], row["dietary_restrictions"], row["nutritional_value"]))
+    df = df.dropna(subset=["type"])
+    df["type_attribute"] = df["type"].str.split(",")
 
-    imq = '''INSERT INTO restaurants VALUES (?,?,?,?,?,?)'''
+
+    data = []
+
+    for _, row in df.iterrows():
+        for attribute in row['type_attribute']:
+            data.append((row["name"], attribute.strip()))
+
+
+    imq = '''INSERT INTO restaurants VALUES (?,?)'''
 
     cursor.executemany(imq, data)
 
@@ -34,31 +41,67 @@ def import_data(csv_file, db):
 
 def prompt():
 
-    cuisine_pref= input("Do you have any cuisine preferences?")
-    allergies_pref= input("Do you have any allergies?")
-    diet_pref= input("Do you have any dietary restrictions?")
-    nutrition_pref= input("Do you have any nutritional goals?")
-    return cuisine_pref, allergies_pref, diet_pref, nutrition_pref
+    cuisine_pref= input("Do you have any cuisine preferences?(America, Italian, etc) Type 'no' if not ").lower()
+    gluten_pref= input("Are you gluten free? Type 'no' if not ").lower()
+    diet_pref= input("Do you have any dietary restrictions?(Vegan or Vegetarian) Type 'no' if not ").lower()
+    dining_pref= input("Would you prefer a specific dining experience? (Bar, Wine Bar, Cafe) Type 'no' if not ").lower()
 
-def recommend(csv_file,cuisine_pref, allergies_pref, diet_pref, nutrition_pref):
+    if cuisine_pref == "no":
+        cuisine_pref=None
+    if gluten_pref == "no":
+        gluten_pref=None
+    if diet_pref =="no":
+        diet_pref=None
+    if dining_pref=="no":
+        dining_pref= None
 
-    df= pd.read_csv(csv_file, header=None, delim_whitespace=False,
-        names= ["id","name","cuisine","allergies", "dietary_restrictions", "nutritional_value"])
+    return cuisine_pref, gluten_pref, diet_pref,dining_pref
 
-    recommendation= df[(df["cuisine"].str.contains(cuisine_pref,na=False)) &
-        (df["allergies"].str.contains(allergies_pref,na=False)) & 
-        (df["dietary_restrictions"].str.contains(diet_pref,na=False))&
-        (df["nutritional_value"].str.contains(nutrition_pref,na=False))]
-    
-    return recommendation
+def recommend(db,cuisine_pref, gluten_pref, diet_pref, dining_pref):
+
+    conn = sqlite3.connect(db)
+    cursor = conn.cursor()
+
+    prefs=[]
+
+    query = '''SELECT DISTINCT name
+    FROM restaurants
+    where 1=1'''
+
+    if cuisine_pref:
+        query += " AND type LIKE ?"
+        prefs.append(f'%{cuisine_pref}%')
+
+    if gluten_pref:
+        if gluten_pref == 'yes':
+            query += " AND type LIKE ?"
+            prefs.append('%Gluten Free Options%')
+
+    if diet_pref:
+        query += " AND type LIKE ?"
+        prefs.append(f'%{diet_pref}%')
+
+    if dining_pref:
+        query += " AND type LIKE ?"
+        prefs.append(f'%{dining_pref}%')
+
+    if prefs:
+        cursor.execute(query, prefs)
+    else:
+        cursor.execute(query)
+
+    recommendations = cursor.fetchall()
+
+    conn.close()
+
+    return recommendations
 
 if __name__== "__main__":
 
-    import_data("restaurants.csv", "restaurants.db")
+    import_data("Restaurants.csv", "restaurants.db")
 
-    cuisine_pref, allergies_pref, diet_pref, nutrition_pref= prompt()
+    cuisine_pref, gluten_pref, diet_pref, dining_pref= prompt()
 
-    rec= recommend("restaurants.csv", cuisine_pref, allergies_pref, diet_pref, nutrition_pref)
-
+    rec= recommend("restaurants.db", cuisine_pref, gluten_pref, diet_pref, dining_pref)
 
     print(f"Your recommended restaurants are {rec}")
