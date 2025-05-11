@@ -17,21 +17,21 @@ def import_data(csv_file, db):
     cursor.execute(cq)
 
     #reads the csv file using pandas
-    df= pd.read_csv(csv_file,  delim_whitespace=False, usecols=[0, 3],
-        names= ["name","type"])
-    
+    df= pd.read_csv(csv_file,  delim_whitespace=False, usecols=[0, 3], names= ["name","type"])
     df = df.dropna(subset=["type"])
-    df["type_attribute"] = df["type"].str.split(",")
 
+    #df["type_attribute"] = df["type"].str.split(",")
 
     data = []
 
     for _, row in df.iterrows():
-        for attribute in row['type_attribute']:
-            data.append((row["name"], attribute.strip()))
+        name = row["name"].strip()
+        type = [type_attr.strip().lower() for type_attr in row["type"].split(',') if type_attr.strip()]
+        for type_attr in type:
+            data.append((name, type_attr))
 
 
-    imq = '''INSERT INTO restaurants VALUES (?,?)'''
+    imq = '''INSERT INTO restaurants (name,type) VALUES (?,?)'''
 
     cursor.executemany(imq, data)
 
@@ -62,39 +62,37 @@ def recommend(db,cuisine_pref, gluten_pref, diet_pref, dining_pref):
     conn = sqlite3.connect(db)
     cursor = conn.cursor()
 
-    prefs=[]
-
-    query = '''SELECT DISTINCT name
-    FROM restaurants
-    where 1=1'''
+    preferences = []
 
     if cuisine_pref:
-        query += " AND type LIKE ?"
-        prefs.append(f'%{cuisine_pref}%')
-
-    if gluten_pref:
-        if gluten_pref == 'yes':
-            query += " AND type LIKE ?"
-            prefs.append('%Gluten Free Options%')
-
+        preferences.append(cuisine_pref.lower())
+    if gluten_pref == "yes":
+        preferences.append("gluten free options")
     if diet_pref:
-        query += " AND type LIKE ?"
-        prefs.append(f'%{diet_pref}%')
-
+        preferences.append(diet_pref.lower())
     if dining_pref:
-        query += " AND type LIKE ?"
-        prefs.append(f'%{dining_pref}%')
-
-    if prefs:
-        cursor.execute(query, prefs)
-    else:
-        cursor.execute(query)
-
+        preferences.append(dining_pref.lower())
     recommendations = cursor.fetchall()
 
-    conn.close()
+    if not preferences:
+        cursor.execute("SELECT DISTINCT name FROM restaurants")
+        results = [row[0] for row in cursor.fetchall()]
+        conn.close()
+        return results
 
-    return recommendations
+    placeholders = ",".join("?" for _ in preferences)
+
+    query = f"""
+        SELECT name
+        FROM restaurants
+        WHERE type IN ({placeholders})
+        GROUP BY name
+        HAVING COUNT(DISTINCT type) = ?
+    """
+    cursor.execute(query, (*preferences, len(preferences)))
+    results = [row[0] for row in cursor.fetchall()]
+    conn.close()
+    return results
 
 if __name__== "__main__":
 
