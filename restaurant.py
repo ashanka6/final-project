@@ -2,7 +2,6 @@ import sqlite3
 import pandas as pd
 import csv
 
-
 def import_data(csv_file, db):
     conn = sqlite3.connect(db)
     cursor = conn.cursor()
