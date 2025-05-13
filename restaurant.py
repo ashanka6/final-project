@@ -4,7 +4,6 @@ import csv
 
 
 def import_data(csv_file, db):
-
     conn = sqlite3.connect(db)
     cursor = conn.cursor()
 
@@ -19,9 +18,6 @@ def import_data(csv_file, db):
     #reads the csv file using pandas
     df= pd.read_csv(csv_file,  delim_whitespace=False, usecols=[0, 3], names= ["name","type"])
     df = df.dropna(subset=["type"])
-
-    #df["type_attribute"] = df["type"].str.split(",")
-
     data = []
 
     for _, row in df.iterrows():
@@ -30,17 +26,13 @@ def import_data(csv_file, db):
         for type_attr in type:
             data.append((name, type_attr))
 
-
     imq = '''INSERT INTO restaurants (name,type) VALUES (?,?)'''
-
     cursor.executemany(imq, data)
 
     conn.commit()
     conn.close()
 
-
 def prompt():
-
     cuisine_pref= input("Do you have any cuisine preferences?(America, Italian, etc) Type 'no' if not ").lower()
     gluten_pref= input("Are you gluten free? Type 'no' if not ").lower()
     diet_pref= input("Do you have any dietary restrictions?(Vegan or Vegetarian) Type 'no' if not ").lower()
@@ -58,7 +50,6 @@ def prompt():
     return cuisine_pref, gluten_pref, diet_pref,dining_pref
 
 def recommend(db,cuisine_pref, gluten_pref, diet_pref, dining_pref):
-
     conn = sqlite3.connect(db)
     cursor = conn.cursor()
 
@@ -95,11 +86,7 @@ def recommend(db,cuisine_pref, gluten_pref, diet_pref, dining_pref):
     return results
 
 if __name__== "__main__":
-
     import_data("Restaurants.csv", "restaurants.db")
-
     cuisine_pref, gluten_pref, diet_pref, dining_pref= prompt()
-
     rec= recommend("restaurants.db", cuisine_pref, gluten_pref, diet_pref, dining_pref)
-
     print(f"Your recommended restaurants are {rec}")
