@@ -15,7 +15,7 @@ def import_data(csv_file, db):
     cursor.execute(cq)
 
     #reads the csv file using pandas
-    df= pd.read_csv(csv_file,  delim_whitespace=False, usecols=[0, 3], names= ["name","type"])
+    df= pd.read_csv(csv_file, sep=",", usecols=[0, 3], names= ["name","type"])
     df = df.dropna(subset=["type"])
     data = []
 
@@ -32,7 +32,7 @@ def import_data(csv_file, db):
     conn.close()
 
 def prompt():
-    cuisine_pref= input("Do you have any cuisine preferences?(America, Italian, etc) Type 'no' if not ").lower()
+    cuisine_pref= input("Do you have any cuisine preferences?(American, Italian, etc) Type 'no' if not ").lower()
     gluten_pref= input("Are you gluten free? Type 'no' if not ").lower()
     diet_pref= input("Do you have any dietary restrictions?(Vegan or Vegetarian) Type 'no' if not ").lower()
     dining_pref= input("Would you prefer a specific dining experience? (Bar, Wine Bar, Cafe) Type 'no' if not ").lower()
