@@ -15,7 +15,7 @@ def import_data(csv_file, db):
     cursor.execute(cq)
 
     #reads the csv file using pandas
-    df= pd.read_csv(csv_file,  delim_whitespace=False, usecols=[0, 3], names= ["name","type"])
+    df= pd.read_csv(csv_file, delimiter=",", usecols=[0, 3], names= ["name","type"])
     df = df.dropna(subset=["type"])
     data = []
 
@@ -82,10 +82,16 @@ def recommend(db,cuisine_pref, gluten_pref, diet_pref, dining_pref):
     cursor.execute(query, (*preferences, len(preferences)))
     results = [row[0] for row in cursor.fetchall()]
     conn.close()
-    return results
+    if not results:
+        return ["No restaurants match your preferences."]
+    else:
+        return results
 
 if __name__== "__main__":
     import_data("Restaurants.csv", "restaurants.db")
     cuisine_pref, gluten_pref, diet_pref, dining_pref= prompt()
     rec= recommend("restaurants.db", cuisine_pref, gluten_pref, diet_pref, dining_pref)
-    print(f"Your recommended restaurants are {rec}")
+    if rec == ["No restaurants match your preferences."]:
+        print("No restaurants match your preferences.")
+    else:
+        print(f"Your recommended restaurants are {rec}")
