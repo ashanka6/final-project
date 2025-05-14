@@ -15,7 +15,7 @@ def import_data(csv_file, db):
     cursor.execute(cq)
 
     #reads the csv file using pandas
-    df= pd.read_csv(csv_file, sep=",", usecols=[0, 3], names= ["name","type"])
+    df= pd.read_csv(csv_file,  delim_whitespace=False, usecols=[0, 3], names= ["name","type"])
     df = df.dropna(subset=["type"])
     data = []
 
